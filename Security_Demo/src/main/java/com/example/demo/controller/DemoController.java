@@ -11,11 +11,7 @@ public class DemoController {
     public String hello(Authentication authentication) {
 
         String username = authentication.getName();
+        return "Hello "+username;
 
-        if ("admin".equals(username)) {
-            return "Hello Admin";
-        }
-
-        return "Hello User";
     }
 }
