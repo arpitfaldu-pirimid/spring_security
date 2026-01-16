@@ -7,11 +7,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class DemoController {
 
-    @GetMapping("/hello")
+    @GetMapping("/api/hello")
     public String hello(Authentication authentication) {
 
-        String username = authentication.getName();
-        return "Hello "+username;
+        return "JWT is working well done "+ authentication.getName();
 
     }
 }

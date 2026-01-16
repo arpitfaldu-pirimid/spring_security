@@ -1,35 +1,65 @@
 package com.example.demo.controller;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import com.example.demo.dto.AuthRequest;
 import com.example.demo.entity.UserEntity;
+import com.example.demo.jwt.JwtUtil;
 import com.example.demo.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 public class AuthController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
-    public AuthController(UserRepository userRepository,
-                          PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @PostMapping("/api/login")
+    public Map<String, String> login(@RequestBody AuthRequest request) {
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword())
+        );
+        System.out.println(request.getUsername());
+
+        String token = jwtUtil.generateToken(request.getUsername());
+        return Map.of("accessToken", token);
     }
 
     @PostMapping("/signup")
-    public String signup(@RequestParam String username,
-                         @RequestParam String password) {
+    public ResponseEntity<?> signup(@RequestBody AuthRequest request) {
 
-        if (userRepository.findByUsername(username).isPresent()) {
-            return "Username already exists";
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            return ResponseEntity.badRequest()
+                    .body("Username already exists");
         }
 
         UserEntity user = new UserEntity();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEnabled(true);
         System.out.println(user);
         userRepository.save(user);
-        return "User registered successfully";
+
+        return ResponseEntity.ok("User registered successfully");
     }
+
 }
