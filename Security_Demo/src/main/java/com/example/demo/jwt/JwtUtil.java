@@ -16,12 +16,21 @@ public class JwtUtil {
             "aVeryLongSecureKeyForJwtSigningMustBeAtLeast32Characters!".getBytes()
     );
 
-    public String generateToken(String username) {
+    public String generateAccessToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 10)) // 10 min
-                .signWith(key, SignatureAlgorithm.HS256)   // ✅ correct way in JJWT 0.11.x
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 30 ))  // 30 sec for testing purpose only
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7))
+                .signWith(key)
                 .compact();
     }
 
