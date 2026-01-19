@@ -1,9 +1,12 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.AuthRequest;
+import com.example.demo.entity.RefreshToken;
 import com.example.demo.entity.UserEntity;
 import com.example.demo.jwt.JwtUtil;
+import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +34,12 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @RequestBody AuthRequest request,
@@ -40,22 +49,31 @@ public class AuthController {
                         request.getUsername(),
                         request.getPassword())
         );
-        String accessToken = jwtUtil.generateAccessToken(request.getUsername());
-        String refreshToken = jwtUtil.generateRefreshToken(request.getUsername());
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+        String accessToken =
+                jwtUtil.generateAccessToken(request.getUsername());
+
+        RefreshToken refreshToken =
+                refreshTokenService.createRefreshToken(request.getUsername());
+
+        ResponseCookie cookie = ResponseCookie.from(
+                        "refreshToken",
+                        refreshToken.getToken())
                 .httpOnly(true)
                 .secure(false)
                 .path("/")
                 .maxAge(7 * 24 * 60 * 60)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok(Map.of("accessToken", accessToken));
+        return ResponseEntity.ok(
+                Map.of("accessToken", accessToken)
+        );
     }
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody AuthRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            return ResponseEntity.badRequest().body("Username already exists");
+            return ResponseEntity.badRequest()
+                    .body("Username already exists");
         }
         UserEntity user = new UserEntity();
         user.setUsername(request.getUsername());
@@ -67,9 +85,24 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public Map<String, String> refresh(
-            @CookieValue(name = "refreshToken") String refreshToken) {
-        String username = jwtUtil.extractUsername(refreshToken);
-        String newAccessToken = jwtUtil.generateAccessToken(username);
+            @CookieValue(name = "refreshToken") String token) {
+        RefreshToken rt = refreshTokenService.verifyRefreshToken(token);
+        String newAccessToken =
+                jwtUtil.generateAccessToken(rt.getUsername());
         return Map.of("accessToken", newAccessToken);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(
+            @CookieValue(name = "refreshToken") String token) {
+        RefreshToken rt = refreshTokenService.verifyRefreshToken(token);
+        refreshTokenRepository.deleteByUsername(rt.getUsername());
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .build();
+        return ResponseEntity.ok("Logged out");
     }
 }
