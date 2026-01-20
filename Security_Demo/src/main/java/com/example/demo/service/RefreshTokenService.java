@@ -29,6 +29,14 @@ public class RefreshTokenService {
         return repository.save(refreshToken);
     }
 
+    @Transactional
+    public void revokeRefreshToken(String token) {
+        RefreshToken rt = repository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+        repository.delete(rt);
+    }
+
+
     public RefreshToken verifyRefreshToken(String token) {
         RefreshToken rt = repository.findByToken(token)
                 .orElseThrow(() ->

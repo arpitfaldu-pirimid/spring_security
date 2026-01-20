@@ -9,8 +9,7 @@ public class DemoController {
 
     @GetMapping("/api/hello")
     public String hello(Authentication authentication) {
-
-        return "JWT is working well done "+ authentication.getName();
-
+        return "{\"message\":\"JWT is working\", \"user\":\""
+                + authentication.getName() + "\"}";
     }
 }
